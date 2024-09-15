@@ -17,7 +17,7 @@ const ArtGallery: React.FC = () => {
   const [globalSelections, setGlobalSelections] = useState<Set<number>>(new Set());
   const [page, setPage] = useState(0);
   const [totalRecords, setTotalRecords] = useState(0);
-  const [rows, setRows] = useState(10);
+  const [rows] = useState(10);
   const [loading, setLoading] = useState(false);
   const [inputRows, setInputRows] = useState(0);
 
