@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import axios from 'axios';
@@ -7,7 +7,7 @@ import 'primereact/resources/primereact.min.css';
 import 'primeicons/primeicons.css';
 import { InputNumber } from 'primereact/inputnumber';
 import { Button } from 'primereact/button';
-import PopOver from './components/PopOver' 
+import { OverlayPanel } from 'primereact/overlaypanel';
 
 interface Artwork {
   id: number;
@@ -21,13 +21,11 @@ interface Artwork {
 
 const App: React.FC = () => {
   const [artworks, setArtworks] = useState<Artwork[]>([]);
-  const [globalSelections, setGlobalSelections] = useState<Set<number>>(new Set()); // Store selected rows by id
+  const [globalSelections, setGlobalSelections] = useState<Set<number>>(new Set());
   const [page, setPage] = useState(0);
   const [totalRecords, setTotalRecords] = useState(0);
-  const [rows, setRows] = useState(12); // Default rows per page
+  const [rows, setRows] = useState(12);
   const [loading, setLoading] = useState(false);
-  const [inputRows, setInputRows] = useState(0); // Input value for number of rows
-  const [showForm, setShowForm] = useState(false); // State to toggle form visibility
 
   const fetchArtworks = useCallback(async (page: number) => {
     setLoading(true);
@@ -51,71 +49,25 @@ const App: React.FC = () => {
     setGlobalSelections(new Set(selectedRows.map(row => row.id)));
   };
 
-  const handleInputChange = (e: any) => {
-    setInputRows(e.value);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputRows <= 0 || inputRows > totalRecords) return;
-
-    setLoading(true);
-    let fetchedArtworks: Artwork[] = [];
-    let currentPage = 0;
-
-    // Incremental loading to reduce API load
-    while (fetchedArtworks.length < inputRows && fetchedArtworks.length < totalRecords) {
-      try {
-        const response = await axios.get(
-          `https://api.artic.edu/api/v1/artworks?page=${currentPage + 1}&limit=${rows}`
-        );
-        fetchedArtworks = [...fetchedArtworks, ...response.data.data];
-        currentPage++;
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        break;
-      }
-    }
-
-    handleRowSelect(fetchedArtworks.slice(0, inputRows));
-    setLoading(false);
+  const selectAllCurrentRows = () => {
+    // Select all currently displayed rows
+    const selectedArtworkIds = new Set(artworks.map((artwork) => artwork.id));
+    setGlobalSelections(selectedArtworkIds);
   };
 
   const onPageChange = (e: any) => {
     setPage(e.page);
   };
 
-  const toggleFormVisibility = () => {
-    setShowForm(!showForm);
-  };
-
   return (
     <div className="App">
-      <h2 className="text-2xl font-bold mb-4">Art Gallery</h2>
-
-      {/* Button to toggle form visibility */}
-      <Button icon="pi pi-plus" className="p-button-sm mb-4" onClick={toggleFormVisibility} />
-
-      {showForm && (
-        <form onSubmit={handleSubmit} className="mb-4 flex items-center border-4">
-          <InputNumber
-            id="rowsInput"
-            value={inputRows}
-            onValueChange={handleInputChange}
-            min={0}
-            max={totalRecords}
-            placeholder="Enter row number"
-            className="p-inputtext-sm mr-3"
-          />
-          <Button label="Submit" icon="pi pi-check" className="p-button-sm" />
-        </form>
-      )}
+      <h2 className="text-2xl font-bold mb-4">Art Work</h2>
 
       {/* DataTable */}
       <DataTable
         value={artworks}
         paginator
-        rows={rows} // Use rows per page
+        rows={rows}
         totalRecords={totalRecords}
         lazy
         first={page * rows}
@@ -127,7 +79,7 @@ const App: React.FC = () => {
         loading={loading}
       >
         <Column selectionMode="multiple" headerStyle={{ width: '3em' }} />
-        <Column header={<PopOver/>} />  
+        <Column header={<PopOver setRows={setRows} selectAllRows={selectAllCurrentRows} />} /> {/* Pass setRows and selectAllRows */}
         <Column field="title" header="Title" />
         <Column field="place_of_origin" header="Place of Origin" />
         <Column field="artist_display" header="Artist" />
@@ -135,6 +87,46 @@ const App: React.FC = () => {
         <Column field="date_start" header="Start Date" />
         <Column field="date_end" header="End Date" />
       </DataTable>
+    </div>
+  );
+};
+
+interface PopOverProps {
+  setRows: React.Dispatch<React.SetStateAction<number>>;
+  selectAllRows: () => void;
+}
+
+export const PopOver: React.FC<PopOverProps> = ({ setRows, selectAllRows }) => {
+  const op = useRef<OverlayPanel | null>(null);
+  const [inputRows, setInputRows] = useState<number | null>(null);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inputRows && inputRows > 0) {
+      setRows(inputRows);
+      selectAllRows(); // Automatically select all rows after setting the number of rows
+      if (op.current) {
+        op.current.hide(); // Close the overlay panel after submitting
+      }
+    }
+  };
+
+  return (
+    <div className="card flex justify-content-center">
+      <img onClick={(e) => op.current?.toggle(e)} src="../../public/pop_over.png" alt="" style={{ height: "15px" }} />
+      <OverlayPanel ref={op}>
+        <form onSubmit={handleSubmit} className="flex-col p-2">
+          <InputNumber
+            value={inputRows}
+            onValueChange={(e) => setInputRows(e.value)}
+            min={1}
+            max={100}  // Adjust max according to your needs
+            placeholder="Enter row number"
+            className="p-inputtext-sm mb-2"
+          />
+          <Button label="Submit" icon="pi pi-check" className="p-button-sm" type="submit" />
+        </form>
+      </OverlayPanel>
     </div>
   );
 };
