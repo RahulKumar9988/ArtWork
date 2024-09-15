@@ -1,17 +1,12 @@
 {
-  "name": "assignmen",
+  "name": "artwork",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-<<<<<<< HEAD
     "build": "vite build",
     "start": "vite",
-=======
-    "start": "vite",
-    "build": "vite build",
->>>>>>> 11b90b9dab4b059f0942ee20bb7f1b0a04b5e145
     "lint": "eslint .",
     "preview": "vite preview"
     
